@@ -1,0 +1,38 @@
+{
+  "name": "chatplug-client",
+  "version": "1.0.0",
+  "description": "ChatPlug JavaScript wrapper for services to use",
+  "main": "index.js",
+  "scripts": {
+    "start": "ts-node index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ChatPlug/ChatPlug-js-client.git"
+  },
+  "author": "Bjornskjald <github@bjorn.ml>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ChatPlug/ChatPlug-js-client/issues"
+  },
+  "homepage": "https://github.com/ChatPlug/ChatPlug-js-client#readme",
+  "dependencies": {
+    "@types/node": "^12.6.2",
+    "@types/node-fetch": "^2.3.7",
+    "@types/ws": "^6.0.1",
+    "apollo-link": "^1.2.12",
+    "apollo-link-http": "^1.5.15",
+    "apollo-link-ws": "^1.0.18",
+    "graphql": "^14.4.2",
+    "graphql-tag": "^2.10.1",
+    "node-fetch": "^2.6.0",
+    "subscriptions-transport-ws": "^0.9.16",
+    "ws": "^7.1.0"
+  },
+  "devDependencies": {
+    "@types/graphql": "^14.2.2",
+    "ts-node": "^8.3.0",
+    "typescript": "^3.5.3"
+  }
+}
