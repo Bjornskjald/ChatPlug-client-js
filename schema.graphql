@@ -1,13 +1,16 @@
 type Thread {
-  id: ID!
-  serviceId: String!
-  originId: String!
+    name: String!
+    originId: String!
+    messages: [Message!]!
+    threadGroupId: ID!
+    serviceInstanceId: ID!
+    id: ID!
 }
 
 type Service {
-  displayName: String!
-  moduleName: String!
-  instances: [ServiceInstance!]!
+    displayName: String!
+    description: String!
+    name: String!
 }
 
 enum InstanceStatus {
@@ -18,58 +21,74 @@ enum InstanceStatus {
 }
 
 type ServiceInstance {
-  id: ID!
-  status: InstanceStatus!
-  instanceName: String!
+    id: ID!
+    name: String!
+    status: InstanceStatus!
 }
 
 type ThreadGroup {
-  id: ID!
-  name: String!
-  threads: [Thread!]!
+    id: ID!
+    name: String!
+    messages: [Message!]!
+    threads: [Thread!]!
 }
 
 type Message {
-  id: ID!
-  body: String!
-  originId: String!
-  author: MessageAuthor!
+    id: ID!
+    originId: String!
+    messageAuthorId: ID!
+    threadId: ID!
+    body: String!
+    threadGroupId: ID!
 }
 
 type MessageAuthor {
-  originId: String!
-  username: String!
+    id: ID!
+    originId: String!
+    username: String!
+}
+
+type MessagePayload {
+    targetThreadId: ID!
+    message: Message!
+}
+
+input MessageAuthorInput {
+    originId: String!
+    username: String!
 }
 
 input NewMessage {
-  id: ID!
-  body: String!
-  authorName: String!
-  authorOriginId: String!
-  originId: String!
+    body: String!
+    author: MessageAuthorInput!
+    originId: String!
 }
 
 input NewThread {
-  serviceId: String!
-  originId: String!
-  groupId: ID!
-  name: String!
+    serviceId: String!
+    originId: String!
+    groupId: ID!
+    name: String!
 }
 
 type Query {
   messages: [Message!]!
   instances: [ServiceInstance!]!
   services: [Service!]!
+  threadGroups: [ThreadGroup!]!
 }
 
 type Mutation {
-  sendMessage(input: NewMessage!): Message!
-  createThreadGroup(name: String!): ThreadGroup!
-  addThreadToGroup(input: NewThread): ThreadGroup!
-  setInstanceStatus(instanceId: ID!, status: InstanceStatus): ServiceInstance!
-  createNewInstance(serviceModuleName: String!, instanceName: String!): ServiceInstance!
+    sendMessage(instanceId: ID!, input: NewMessage!): Message!
+    createThreadGroup(name: String!): ThreadGroup!
+    deleteThreadGroup(id: ID!): ID!
+    deleteThread(id: ID!): ID!
+    addThreadToGroup(input: NewThread): ThreadGroup!
+    setInstanceStatus(instanceId: ID!, status: InstanceStatus): ServiceInstance!
+    createNewInstance(serviceModuleName: String!, instanceName: String!): ServiceInstance!
 }
 
 type Subscription {
-  messageReceived(threadId: String!): Message!
+    messageReceived(instanceId: ID!): MessagePayload!
 }
+

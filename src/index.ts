@@ -21,6 +21,7 @@ export interface Message {
 export default class ChatPlugClient extends EventEmitter {
   private readonly httpLink: HttpLink
   private readonly wsLink: WebSocketLink
+  private name: string = process.argv[2]!!
 
   constructor (uri: string) {
     super()
@@ -66,7 +67,7 @@ export default class ChatPlugClient extends EventEmitter {
     execute(this.wsLink, {
       query: gql`
         subscription onNewMessage {
-          messageReceived (threadId: "ayy") {
+          messageReceived (instanceId: "${this.name}") {
             body
             author {
               username
