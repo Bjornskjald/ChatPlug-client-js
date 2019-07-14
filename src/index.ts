@@ -23,12 +23,20 @@ export default class ChatPlugClient extends EventEmitter {
   private readonly wsLink: WebSocketLink
   private name: string = process.argv[2]!!
 
-  constructor (uri: string) {
+  constructor () {
     super()
+
     // @ts-ignore this fetch is working, TypeScript stop complaining about it
-    this.httpLink = new HttpLink({ uri, fetch })
+    this.httpLink = new HttpLink({
+      uri: 'http://localhost:2137/query',
+      fetch
+    })
     this.wsLink = new WebSocketLink(
-      new SubscriptionClient(uri, undefined, WebSocket)
+      new SubscriptionClient(
+        'ws://localhost:2137/query', 
+        undefined,
+        WebSocket
+      )
     )
 
     this.subscribe()
@@ -49,14 +57,7 @@ export default class ChatPlugClient extends EventEmitter {
             }
           }
         `,
-        variables: {
-          message: {
-            body: message.body,
-            originId: message.originId,
-            authorName: message.author.username,
-            authorOriginId: message.author.originId
-          }
-        }
+        variables: { message }
       })
     ).then(data => {
       return data
