@@ -88,12 +88,14 @@ export default class ChatPlugClient extends EventEmitter {
     })
   }
 
-  private initialize () {
+  private initialize (): Promise<any> {
     return toPromise(
       execute(this.httpLink, {
         query: gql`
           mutation setStatus {
-            setInstanceStatus (instanceId: "${this.id}", status: RUNNING)
+            setInstanceStatus (instanceId: "${this.id}", status: INITIALIZED) {
+              id
+            }
           }
         `
       })
