@@ -12,54 +12,60 @@ export interface MessageAuthor {
   originId: string
 }
 
-export interface Message {
+export interface NewMessage {
   body: string
   originId: string
   author: MessageAuthor
+  originThreadId: string
 }
 
 export default class ChatPlugClient extends EventEmitter {
   private readonly httpLink: HttpLink
   private readonly wsLink: WebSocketLink
-  private name: string = process.argv[2]!!
+  private id: string = process.argv[2]!!
 
-  constructor () {
+  constructor (host: string = 'localhost', port: number = 2137) {
     super()
+
+    const url = `//${host}:${port.toString()}/query`
 
     // @ts-ignore this fetch is working, TypeScript stop complaining about it
     this.httpLink = new HttpLink({
-      uri: 'http://localhost:2137/query',
+      uri: `http:${url}`,
       fetch
     })
     this.wsLink = new WebSocketLink(
       new SubscriptionClient(
-        'ws://localhost:2137/query', 
+        `ws:${url}`, 
         undefined,
         WebSocket
       )
     )
 
-    this.subscribe()
+    this.initialize()
+      .then(() => this.subscribe())
   }
 
-  send (message: Message)/*: Promise<Message> */ {
+  send (message: NewMessage)/*: Promise<Message> */ {
     return toPromise(
       execute(this.httpLink, {
         query: gql`
           mutation addMessage ($message: NewMessage!) {
-            sendMessage (input: $message) {
+            sendMessage (instanceId: "${this.id}", input: $message) {
               body
               originId
               author {
                 username
                 originId
               }
+              originThreadId
             }
           }
         `,
         variables: { message }
       })
     ).then(data => {
+      // TODO: add parsing and returning as Message
       return data
     })
   }
@@ -68,7 +74,7 @@ export default class ChatPlugClient extends EventEmitter {
     execute(this.wsLink, {
       query: gql`
         subscription onNewMessage {
-          messageReceived (instanceId: "${this.name}") {
+          messageReceived (instanceId: "${this.id}") {
             body
             author {
               username
@@ -80,5 +86,17 @@ export default class ChatPlugClient extends EventEmitter {
     }).subscribe(({ data }) => {
       this.emit('message', data!!.messageReceived)
     })
+  }
+
+  private initialize () {
+    return toPromise(
+      execute(this.httpLink, {
+        query: gql`
+          mutation setStatus {
+            setInstanceStatus (instanceId: "${this.id}", status: RUNNING)
+          }
+        `
+      })
+    )
   }
 }
