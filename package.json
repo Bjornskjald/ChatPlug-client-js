@@ -4,7 +4,7 @@
   "description": "ChatPlug JavaScript wrapper for services to use",
   "main": "dist/index.js",
   "scripts": {
-    "start": "ts-node index.ts",
+    "prepare": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -18,9 +18,6 @@
   },
   "homepage": "https://github.com/ChatPlug/ChatPlug-js-client#readme",
   "dependencies": {
-    "@types/node": "^12.6.2",
-    "@types/node-fetch": "^2.3.7",
-    "@types/ws": "^6.0.1",
     "apollo-link": "^1.2.12",
     "apollo-link-http": "^1.5.15",
     "apollo-link-ws": "^1.0.18",
@@ -32,6 +29,9 @@
   },
   "devDependencies": {
     "@types/graphql": "^14.2.2",
+    "@types/node": "^12.6.2",
+    "@types/node-fetch": "^2.3.7",
+    "@types/ws": "^6.0.1",
     "ts-node": "^8.3.0",
     "typescript": "^3.5.3"
   }
