@@ -1,8 +1,8 @@
 {
   "name": "chatplug-client",
-  "version": "1.0.0",
+  "version": "0.0.2",
   "description": "ChatPlug JavaScript wrapper for services to use",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
     "start": "ts-node index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
