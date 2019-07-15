@@ -1,9 +1,9 @@
+import 'isomorphic-fetch'
 import { SubscriptionClient } from 'subscriptions-transport-ws'
 import { execute, toPromise } from 'apollo-link'
 import { WebSocketLink } from 'apollo-link-ws'
 import { HttpLink } from 'apollo-link-http'
 import gql from 'graphql-tag'
-import fetch from 'node-fetch'
 import WebSocket from 'ws'
 import { EventEmitter } from 'events'
 
@@ -28,11 +28,8 @@ export default class ChatPlugClient extends EventEmitter {
     super()
 
     const url = `//${host}:${port.toString()}/query`
-
-    // @ts-ignore this fetch is working, TypeScript stop complaining about it
     this.httpLink = new HttpLink({
-      uri: `http:${url}`,
-      fetch
+      uri: `http:${url}`
     })
     this.wsLink = new WebSocketLink(
       new SubscriptionClient(

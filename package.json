@@ -1,6 +1,6 @@
 {
   "name": "chatplug-client",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "ChatPlug JavaScript wrapper for services to use",
   "main": "dist/index.js",
   "scripts": {
@@ -23,7 +23,7 @@
     "apollo-link-ws": "^1.0.18",
     "graphql": "^14.4.2",
     "graphql-tag": "^2.10.1",
-    "node-fetch": "^2.6.0",
+    "isomorphic-fetch": "^2.2.1",
     "subscriptions-transport-ws": "^0.9.16",
     "ws": "^7.1.0"
   },
