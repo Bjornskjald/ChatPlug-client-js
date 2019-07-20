@@ -1,11 +1,11 @@
-import 'isomorphic-fetch'
+import { EventEmitter } from 'events'
+import fetch from 'node-fetch'
 import { SubscriptionClient } from 'subscriptions-transport-ws'
 import { execute, toPromise } from 'apollo-link'
 import { WebSocketLink } from 'apollo-link-ws'
 import { HttpLink } from 'apollo-link-http'
 import gql from 'graphql-tag'
 import WebSocket from 'ws'
-import { EventEmitter } from 'events'
 
 export interface MessageAuthor {
   username: string
@@ -19,7 +19,7 @@ export interface NewMessage {
   originThreadId: string
 }
 
-export default class ChatPlugClient extends EventEmitter {
+export class Client extends EventEmitter {
   private readonly httpLink: HttpLink
   private readonly wsLink: WebSocketLink
   private id: string = process.argv[2]!!
@@ -28,8 +28,10 @@ export default class ChatPlugClient extends EventEmitter {
     super()
 
     const url = `//${host}:${port.toString()}/query`
+    // @ts-ignore That Fetch is NOT incorrect. TypeScript stop whining.
     this.httpLink = new HttpLink({
-      uri: `http:${url}`
+      uri: `http:${url}`,
+      fetch
     })
     this.wsLink = new WebSocketLink(
       new SubscriptionClient(
