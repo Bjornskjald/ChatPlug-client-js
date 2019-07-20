@@ -7,15 +7,27 @@ import { HttpLink } from 'apollo-link-http'
 import gql from 'graphql-tag'
 import WebSocket from 'ws'
 
-export interface MessageAuthor {
-  username: string
+export interface MessageAuthorInput {
   originId: string
+  username: string
+  avatarUrl: string
 }
 
-export interface NewMessage {
+export type AttachmentType =
+  'FILE' |
+  'IMAGE' |
+  'AUDIO' |
+  'VIDEO'
+
+export interface AttachmentInput {
+  originId: string
+  type: AttachmentType
+}
+
+export interface MessageInput {
   body: string
   originId: string
-  author: MessageAuthor
+  author: MessageAuthorInput
   originThreadId: string
 }
 
@@ -45,11 +57,11 @@ export class Client extends EventEmitter {
       .then(() => this.subscribe())
   }
 
-  send (message: NewMessage)/*: Promise<Message> */ {
+  send (message: MessageInput)/*: Promise<Message> */ {
     return toPromise(
       execute(this.httpLink, {
         query: gql`
-          mutation addMessage ($message: NewMessage!) {
+          mutation addMessage ($message: MessageInput!) {
             sendMessage (instanceId: "${this.id}", input: $message) {
               body
               originId
@@ -63,9 +75,8 @@ export class Client extends EventEmitter {
         `,
         variables: { message }
       })
-    ).then(data => {
-      // TODO: add parsing and returning as Message
-      return data
+    ).then(({ data }) => {
+      return data!!.addMessage
     })
   }
 
@@ -74,10 +85,13 @@ export class Client extends EventEmitter {
       query: gql`
         subscription onNewMessage {
           messageReceived (instanceId: "${this.id}") {
-            body
-            author {
-              username
-              originId
+            targetThreadId
+            message {
+              body
+              author {
+                username
+                originId
+              }
             }
           }
         }

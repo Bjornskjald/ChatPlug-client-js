@@ -16,6 +16,7 @@ type Service {
 enum InstanceStatus {
   RUNNING
   INITIALIZED
+  CONFIGURED
   SHUTTING_DOWN
   STOPPED
 }
@@ -36,16 +37,18 @@ type ThreadGroup {
 type Message {
     id: ID!
     originId: String!
-    messageAuthorId: ID!
-    threadId: ID!
+    author: MessageAuthor!
+    thread: Thread!
     body: String!
     threadGroupId: ID!
+    attachments: [Attachment!]!
 }
 
 type MessageAuthor {
     id: ID!
     originId: String!
     username: String!
+    avatarUrl: String!
 }
 
 type MessagePayload {
@@ -53,19 +56,43 @@ type MessagePayload {
     message: Message!
 }
 
+enum AttachmentType {
+    FILE
+    IMAGE
+    AUDIO
+    VIDEO
+}
+
+type Attachment {
+    id: ID!
+    originId: String!
+    type: AttachmentType!
+    sourceUrl: String!
+}
+
 input MessageAuthorInput {
     originId: String!
     username: String!
+    avatarUrl: String!
 }
 
-input NewMessage {
+input AttachmentInput {
+    originId: String!
+    type: AttachmentType!
+    sourceUrl: String!
+}
+
+input MessageInput {
     body: String!
     author: MessageAuthorInput!
+    attachments: [AttachmentInput!]!
     originId: String!
+    originThreadId: String!
+    avatarUrl: String
 }
 
-input NewThread {
-    serviceId: String!
+input ThreadInput {
+    instanceId: String!
     originId: String!
     groupId: ID!
     name: String!
@@ -78,17 +105,42 @@ type Query {
   threadGroups: [ThreadGroup!]!
 }
 
+enum ConfigurationFieldType {
+    BOOLEAN
+    STRING
+    NUMBER
+}
+
+input ConfigurationField {
+	type: ConfigurationFieldType!
+    defaultValue: String!
+    optional: Boolean!
+    hint: String!
+    mask: Boolean!
+}
+
+input ConfigurationRequest {
+	fields: [ConfigurationField!]!
+}
+
+type ConfigurationResponse {
+	fieldValues: [String!]!
+}
+
+
 type Mutation {
-    sendMessage(instanceId: ID!, input: NewMessage!): Message!
+    sendMessage(instanceId: ID!, input: MessageInput!): Message!
     createThreadGroup(name: String!): ThreadGroup!
     deleteThreadGroup(id: ID!): ID!
     deleteThread(id: ID!): ID!
-    addThreadToGroup(input: NewThread): ThreadGroup!
+    addThreadToGroup(input: ThreadInput): ThreadGroup!
     setInstanceStatus(instanceId: ID!, status: InstanceStatus): ServiceInstance!
     createNewInstance(serviceModuleName: String!, instanceName: String!): ServiceInstance!
+
 }
 
 type Subscription {
     messageReceived(instanceId: ID!): MessagePayload!
+    configurationReceived(configuration: ConfigurationRequest!): ConfigurationResponse!
 }
 
