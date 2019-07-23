@@ -6,38 +6,53 @@ import { WebSocketLink } from 'apollo-link-ws'
 import { HttpLink } from 'apollo-link-http'
 import gql from 'graphql-tag'
 import WebSocket from 'ws'
+import StrictEventEmitter from 'strict-event-emitter-types'
+import { Message, MessageInput, MessagePayload } from './types'
 
-export interface MessageAuthorInput {
-  originId: string
-  username: string
-  avatarUrl: string
+interface Events {
+  message: (targetThreadId: string, message: Message) => void;
+  ready: void;
 }
 
-export type AttachmentType =
-  'FILE' |
-  'IMAGE' |
-  'AUDIO' |
-  'VIDEO'
+type Emitter = StrictEventEmitter<EventEmitter, Events>
 
-export interface AttachmentInput {
-  originId: string
-  type: AttachmentType
-}
-
-export interface MessageInput {
-  body: string
-  originId: string
-  author: MessageAuthorInput
-  originThreadId: string
-}
-
-export class Client extends EventEmitter {
+export class Client extends (EventEmitter as { new(): Emitter }) {
   private readonly httpLink: HttpLink
   private readonly wsLink: WebSocketLink
   private id: string = process.argv[2]!!
+  private readonly messageQuery = `
+    id
+    originId
+    author {
+      id
+      originId
+      username
+      avatarUrl
+    }
+    thread {
+      id
+      name
+      originId
+      threadGroupId
+      serviceInstanceId
+    }
+    body
+    threadGroupId
+    attachments {
+      id
+      originId
+      type
+      sourceUrl
+    }
+  `
 
   constructor (host: string = 'localhost', port: number = 2137) {
     super()
+
+    if (process.argv.length < 3) {
+      console.error('ChatPlug Client is not meant to run from command line, but as a ChatPlug service by the core.')
+      process.exit(1)
+    }
 
     const url = `//${host}:${port.toString()}/query`
     // @ts-ignore That Fetch is NOT incorrect. TypeScript stop whining.
@@ -55,28 +70,23 @@ export class Client extends EventEmitter {
 
     this.initialize()
       .then(() => this.subscribe())
+      .then(() => this.emit('ready'))
   }
 
-  send (message: MessageInput)/*: Promise<Message> */ {
+  send (message: MessageInput): Promise<Message> {
     return toPromise(
       execute(this.httpLink, {
         query: gql`
-          mutation addMessage ($message: MessageInput!) {
+          mutation sendMessage ($message: MessageInput!) {
             sendMessage (instanceId: "${this.id}", input: $message) {
-              body
-              originId
-              author {
-                username
-                originId
-              }
-              originThreadId
+              ${this.messageQuery}
             }
           }
         `,
         variables: { message }
       })
     ).then(({ data }) => {
-      return data!!.addMessage
+      return data!!.sendMessage
     })
   }
 
@@ -86,18 +96,13 @@ export class Client extends EventEmitter {
         subscription onNewMessage {
           messageReceived (instanceId: "${this.id}") {
             targetThreadId
-            message {
-              body
-              author {
-                username
-                originId
-              }
-            }
+            message { ${this.messageQuery} }
           }
         }
       `
     }).subscribe(({ data }) => {
-      this.emit('message', data!!.messageReceived)
+      const payload: MessagePayload = data!!.messageReceived
+      this.emit('message', payload.targetThreadId, payload.message)
     })
   }
 
