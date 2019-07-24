@@ -13,6 +13,7 @@ export type AttachmentType =
 export interface AttachmentInput {
   originId: string
   type: AttachmentType
+  sourceUrl: string
 }
 
 export interface MessageInput {
