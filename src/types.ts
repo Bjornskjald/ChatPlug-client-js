@@ -16,6 +16,23 @@ export interface AttachmentInput {
   sourceUrl: string
 }
 
+export interface ConfigurationRequest {
+  fields: ConfigurationField[]
+}
+
+export interface ConfigurationField {
+  name: string
+  type: 'BOOLEAN' | 'STRING' | 'NUMBER'
+  defaultValue: string
+  optional: boolean
+  hint: string
+  mask: boolean
+}
+
+export interface ConfigurationResponse {
+  fieldValues: { name: string, value: string }[]
+}
+
 export interface MessageInput {
   body: string
   originId: string
@@ -60,4 +77,14 @@ export interface Message {
 export interface MessagePayload {
   targetThreadId: string
   message: Message
+}
+
+export interface SearchRequest {
+  query: string
+}
+
+export interface ThreadSearchResult {
+  name: string
+  iconUrl: string
+  originId: string
 }

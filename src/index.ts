@@ -1,5 +1,6 @@
 import { EventEmitter } from 'events'
 import fetch from 'node-fetch'
+import fs from 'fs-extra'
 import { SubscriptionClient } from 'subscriptions-transport-ws'
 import { execute, toPromise } from 'apollo-link'
 import { WebSocketLink } from 'apollo-link-ws'
@@ -7,19 +8,27 @@ import { HttpLink } from 'apollo-link-http'
 import gql from 'graphql-tag'
 import WebSocket from 'ws'
 import StrictEventEmitter from 'strict-event-emitter-types'
-import { Message, MessageInput, MessagePayload } from './types'
+import {
+  Message,
+  MessageInput,
+  MessagePayload,
+  ConfigurationRequest,
+  ConfigurationResponse,
+  SearchRequest, ThreadSearchResult
+} from './types'
 
 interface Events {
   message: (targetThreadId: string, message: Message) => void;
+  config: (config: ConfigurationResponse) => void;
   ready: void;
 }
 
 type Emitter = StrictEventEmitter<EventEmitter, Events>
 
-export class Client extends (EventEmitter as { new(): Emitter }) {
+export class Client extends (EventEmitter as { new (): Emitter }) {
   private readonly httpLink: HttpLink
   private readonly wsLink: WebSocketLink
-  private id: string = process.argv[2]!!
+  private readonly id: string = process.env.INSTANCE_ID!!
   private readonly messageQuery = `
     id
     originId
@@ -46,30 +55,37 @@ export class Client extends (EventEmitter as { new(): Emitter }) {
     }
   `
 
-  constructor (host: string = 'localhost', port: number = 2137) {
+  constructor () {
     super()
 
-    if (process.argv.length < 3) {
+    if (!process.env.ACCESS_TOKEN) {
       console.error('ChatPlug Client is not meant to run from command line, but as a ChatPlug service by the core.')
       process.exit(1)
     }
 
-    const url = `//${host}:${port.toString()}/query`
     // @ts-ignore That Fetch is NOT incorrect. TypeScript stop whining.
     this.httpLink = new HttpLink({
-      uri: `http:${url}`,
+      uri: process.env.HTTP_ENDPOINT,
+      fetchOptions: {
+        headers: {
+          Authorization: process.env.ACCESS_TOKEN
+        }
+      },
       fetch
     })
     this.wsLink = new WebSocketLink(
       new SubscriptionClient(
-        `ws:${url}`, 
-        undefined,
+        process.env.WS_ENDPOINT!!,
+        { connectionParams: { accessToken: process.env.ACCESS_TOKEN } },
         WebSocket
       )
     )
+  }
 
-    this.initialize()
+  connect (config?: ConfigurationRequest) {
+    return this.initialize()
       .then(() => this.subscribe())
+      .then(() => config ? this.requestConfig(config) : '')
       .then(() => this.emit('ready'))
   }
 
@@ -78,7 +94,7 @@ export class Client extends (EventEmitter as { new(): Emitter }) {
       execute(this.httpLink, {
         query: gql`
           mutation sendMessage ($message: MessageInput!) {
-            sendMessage (instanceId: "${this.id}", input: $message) {
+            sendMessage (input: $message) {
               ${this.messageQuery}
             }
           }
@@ -90,11 +106,44 @@ export class Client extends (EventEmitter as { new(): Emitter }) {
     })
   }
 
+  handleSearch (listener: (request: SearchRequest) => Promise<ThreadSearchResult[]>) {
+    execute(this.wsLink, {
+      query: gql`
+        subscription subscribeToSearchRequests {
+          subscribeToSearchRequests {
+            query
+          }
+        }
+      `
+    }).subscribe(async ({ data }) => {
+      const query = data!!.subscribeToSearchRequests as SearchRequest
+      const res = await listener(query)
+      execute(this.httpLink, {
+        query: gql`
+          mutation setSearchResponse ($forQuery: String!, $threads: [ThreadSearchResultInput!]!) {
+            setSearchResponse(forQuery: $forQuery, threads: $threads) {
+              forQuery
+              threads {
+                iconUrl
+                name
+                originId
+              }
+            }
+          }
+        `,
+        variables: {
+          forQuery: query.query,
+          threads: res
+        }
+      })
+    })
+  }
+
   private subscribe () {
     execute(this.wsLink, {
       query: gql`
         subscription onNewMessage {
-          messageReceived (instanceId: "${this.id}") {
+          messageReceived {
             targetThreadId
             message { ${this.messageQuery} }
           }
@@ -111,12 +160,48 @@ export class Client extends (EventEmitter as { new(): Emitter }) {
       execute(this.httpLink, {
         query: gql`
           mutation setStatus {
-            setInstanceStatus (instanceId: "${this.id}", status: INITIALIZED) {
+            setInstanceStatus (status: INITIALIZED) {
               id
             }
           }
         `
       })
     )
+  }
+
+  private requestConfig (config: ConfigurationRequest) {
+    execute(this.wsLink, {
+      query: gql`
+        subscription onConfigChange ($config: ConfigurationRequest!) {
+          configurationReceived (configuration: $config) {
+            fieldValues {
+              name
+              value
+            }
+          }
+        }
+      `,
+      variables: { config }
+    }).subscribe(({ data }) => {
+      const payload = data!!.configurationReceived
+      this.emit('config', payload)
+      return this.saveConfig(payload)
+    })
+  }
+
+  get configPath () {
+    return `config.${this.id}.json`
+  }
+
+  async getConfig (): Promise<any> {
+    if (await fs.pathExists(this.configPath)) {
+      return fs.readJSON(this.configPath)
+    }
+
+    return new Promise(resolve => this.once('config', resolve))
+  }
+
+  private saveConfig (config: any): Promise<void> {
+    return fs.writeJSON(this.configPath, config)
   }
 }
